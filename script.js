@@ -1,7 +1,7 @@
 // script.js
 
 // Используйте эту строку для локального теста (с правкой файла hosts)
-const API_URL = "http://api.monster-bot.ru:8000/api/data";
+const API_URL = "https://api.monster-bot.ru:8000/api/data";
 
 document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
@@ -205,3 +205,4 @@ document.addEventListener('DOMContentLoaded', () => {
         alert("Команды сформированы! (Отправка в Telegram закомментирована для теста)");
     }
 });
+
