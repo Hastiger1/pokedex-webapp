@@ -1,7 +1,7 @@
 // script.js
 
 // !!! ВАЖНО: Сюда нужно будет вставить URL, который выдаст ngrok !!!
-const API_URL = "http://95.46.48.75:8000/api/data";
+const API_URL = "http://82.148.30.5:8000/api/data";
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -107,4 +107,5 @@ document.addEventListener('DOMContentLoaded', () => {
         tg.close();
     });
 });
+
 
