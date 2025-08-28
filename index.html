@@ -4,34 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Конструктор Команд</title>
-    <style>
-        body { font-family: sans-serif; padding: 15px; background-color: #f0f0f0; }
-        .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
-        select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; }
-        label { margin-top: 15px; display: block; font-weight: bold; }
-        #loading { font-style: italic; color: #888; }
-    </style>
+    <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Собери покемона</h1>
-        <div id="loading">Загрузка данных...</div>
+    <div class="main-container">
+        <h1>Конструктор Команд</h1>
+        <p id="loading">Загрузка данных...</p>
 
         <div id="builder" style="display: none;">
-            <label for="species-select">Выбери вид:</label>
-            <select id="species-select"></select>
+            <div class="team-container">
+                <h2>Команда Игрока 1</h2>
+                <div class="tabs-wrapper">
+                    <div class="tab-buttons" id="team-1-tab-buttons">
+                        </div>
+                    <div class="tab-contents" id="team-1-tab-contents">
+                        </div>
+                </div>
+            </div>
 
-            <label for="item-select">Выбери предмет:</label>
-            <select id="item-select"></select>
+            <div class="team-container">
+                <h2>Команда Игрока 2</h2>
+                 <div class="tabs-wrapper">
+                    <div class="tab-buttons" id="team-2-tab-buttons">
+                        </div>
+                    <div class="tab-contents" id="team-2-tab-contents">
+                        </div>
+                </div>
+            </div>
 
-            <label for="moves-select">Выбери атаки (до 4):</label>
-            <select id="moves-select" multiple size="6"></select>
-
-            <button id="submit-button">Готово</button>
+            <button id="submit-button">Сформировать команды и отправить</button>
         </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
