@@ -1,93 +1,99 @@
 // script.js
 
-// Используйте эту строку для локального теста (с правкой файла hosts)
+// URL вашего API на сервере. Убедитесь, что он правильный.
 const API_URL = "https://api.monster-bot.ru/api/data";
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM WEB APP ---
     const tg = window.Telegram.WebApp;
     tg.ready();
 
+    // Настраиваем Главную Кнопку, но пока не показываем её.
+    tg.MainButton.setText("Сформировать команды");
+    tg.MainButton.onClick(submitTeams);
+
+    // --- 2. ПОЛУЧЕНИЕ ЭЛЕМЕНТОВ СТРАНИЦЫ ---
     const loadingDiv = document.getElementById('loading');
     const builderDiv = document.getElementById('builder');
-    const submitButton = document.getElementById('submit-button');
-
     let GAME_DATA = null;
 
-    // --- 1. Загрузка данных ---
+    // --- 3. ЗАГРУЗКА ИГРОВЫХ ДАННЫХ С БЭКЕНДА ---
     fetch(API_URL)
-        .then(response => response.ok ? response.json() : Promise.reject(new Error(`Ошибка сети: ${response.status}`)))
+        .then(response => {
+            if (!response.ok) {
+                // Если сервер не отвечает, выводим ошибку
+                throw new Error(`Ошибка сети: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             GAME_DATA = data;
-            initializeApp();
+            initializeApp(); // Если данные загружены, строим интерфейс
         })
         .catch(error => {
-            loadingDiv.textContent = `Ошибка загрузки данных: ${error.message}. Убедитесь, что локальный сервер запущен.`;
+            // Если произошла ошибка, сообщаем пользователю и прячем кнопку
+            loadingDiv.textContent = `Ошибка загрузки данных: ${error.message}.`;
             loadingDiv.style.color = 'red';
+            tg.MainButton.hide();
         });
 
-    // --- 2. Инициализация приложения ---
+    // --- 4. ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ ---
     function initializeApp() {
-    loadingDiv.style.display = 'none';
-    builderDiv.style.display = 'block';
+        loadingDiv.style.display = 'none';
+        builderDiv.style.display = 'block';
 
-    // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
-    // Получаем контейнеры для кнопок и содержимого
         const teamContainers = [
             { buttons: document.getElementById('team-1-tab-buttons'), contents: document.getElementById('team-1-tab-contents') },
             { buttons: document.getElementById('team-2-tab-buttons'), contents: document.getElementById('team-2-tab-contents') }
         ];
 
+        // Создаем табы и слоты для каждой из двух команд
         teamContainers.forEach((container, teamIndex) => {
             for (let i = 0; i < 6; i++) {
-                // Создаем кнопку-таб
                 const button = document.createElement('button');
                 button.className = 'tab-button';
                 button.textContent = `Покемон ${i + 1}`;
-                button.dataset.slotId = i; // Связываем кнопку со слотом по ID
+                button.dataset.slotId = i;
 
-                // Создаем сам слот (как и раньше, но он будет скрыт по CSS)
                 const slot = createPokemonSlot(teamIndex + 1, i);
-
-                // Делаем первый таб и слот активными по умолчанию
+                
+                // Первый таб и слот делаем активными по умолчанию
                 if (i === 0) {
                     button.classList.add('active');
                     slot.classList.add('active');
                 }
 
-                // Добавляем обработчик клика на кнопку
+                // Логика переключения табов по клику
                 button.addEventListener('click', (event) => {
-                    // Убираем 'active' у всех кнопок и слотов в этой команде
                     container.buttons.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
                     container.contents.querySelectorAll('.pokemon-slot').forEach(slt => slt.classList.remove('active'));
-
-                    // Добавляем 'active' только нажатой кнопке и её слоту
                     event.target.classList.add('active');
                     slot.classList.add('active');
                 });
 
-                // Добавляем созданные элементы на страницу
                 container.buttons.appendChild(button);
                 container.contents.appendChild(slot);
             }
         });
-
-    submitButton.addEventListener('click', submitTeams);
     }
-
-    // --- 3. Функция для создания одного слота покемона ---
+    
+    // --- 5. ФУНКЦИЯ СОЗДАНИЯ ОДНОГО СЛОТА ПОКЕМОНА ---
     function createPokemonSlot(teamId, slotId) {
         const slot = document.createElement('div');
         slot.className = 'pokemon-slot';
         slot.dataset.teamId = teamId;
         slot.dataset.slotId = slotId;
 
-        // --- Выбор вида покемона ---
+        // Поля для выбора
         const speciesLabel = document.createElement('label');
-        speciesLabel.textContent = `Покемон #${slotId + 1}`;
+        speciesLabel.textContent = `Вид:`;
         const speciesSelect = document.createElement('select');
         speciesSelect.className = 'species-select';
+        speciesSelect.appendChild(new Option("--- Не выбрано ---", ""));
+        for (const speciesId in GAME_DATA.species) {
+            speciesSelect.appendChild(new Option(GAME_DATA.species[speciesId].name, speciesId));
+        }
 
-        // --- НОВЫЙ БЛОК: Уровень ---
         const levelLabel = document.createElement('label');
         levelLabel.textContent = 'Уровень:';
         const levelInput = document.createElement('input');
@@ -102,15 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const abilitySelect = document.createElement('select');
         abilitySelect.className = 'ability-select';
 
-        // Добавляем пустую опцию, чтобы слот мог быть неактивным
-        const emptyOption = new Option("--- Не выбрано ---", "");
-        speciesSelect.appendChild(emptyOption);
-
-        for (const speciesId in GAME_DATA.species) {
-            speciesSelect.appendChild(new Option(GAME_DATA.species[speciesId].name, speciesId));
-        }
-
-        // --- Выбор предмета ---
         const itemLabel = document.createElement('label');
         itemLabel.textContent = `Предмет:`;
         const itemSelect = document.createElement('select');
@@ -118,103 +115,105 @@ document.addEventListener('DOMContentLoaded', () => {
         GAME_DATA.items.forEach(itemId => {
             itemSelect.appendChild(new Option(itemId, itemId));
         });
-
-        // --- Выбор атак ---
+        
         const movesLabel = document.createElement('label');
         movesLabel.textContent = `Атаки (до 4):`;
         const movesSelect = document.createElement('select');
         movesSelect.className = 'moves-select';
         movesSelect.multiple = true;
+        movesSelect.size = 4;
 
-        // --- Собираем всё вместе ---
         slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
 
-        // --- Логика обновления атак при смене покемона ---
+        // Обновление способностей и атак при смене вида
         speciesSelect.addEventListener('change', () => {
-        const selectedSpeciesId = speciesSelect.value;
-        movesSelect.innerHTML = '';
-        abilitySelect.innerHTML = ''; // Очищаем и способности
-
-        if (selectedSpeciesId) {
-            const speciesData = GAME_DATA.species[selectedSpeciesId];
-            // Обновляем атаки
-            if (speciesData?.moves) {
-                speciesData.moves.forEach(moveId => {
-                    const moveData = GAME_DATA.moves[moveId];
-                    if (moveData) movesSelect.appendChild(new Option(`${moveData.name} (${moveData.type})`, moveId));
-                });
+            const selectedSpeciesId = speciesSelect.value;
+            movesSelect.innerHTML = ''; 
+            abilitySelect.innerHTML = '';
+            
+            if (selectedSpeciesId) {
+                const speciesData = GAME_DATA.species[selectedSpeciesId];
+                if (speciesData?.abilities) {
+                    speciesData.abilities.forEach(abilityId => {
+                        abilitySelect.appendChild(new Option(abilityId, abilityId));
+                    });
+                }
+                if (speciesData?.moves) {
+                    speciesData.moves.forEach(moveId => {
+                        const moveData = GAME_DATA.moves[moveId];
+                        if (moveData) movesSelect.appendChild(new Option(`${moveData.name} (${moveData.type})`, moveId));
+                    });
+                }
             }
-            // Обновляем способности
-            if (speciesData?.abilities) {
-                speciesData.abilities.forEach(abilityId => {
-                    abilitySelect.appendChild(new Option(abilityId, abilityId));
-                });
-            }
-        }
-    });
+            // После каждого изменения проверяем, можно ли отправлять форму
+            checkFormValidity();
+        });
 
         return slot;
     }
-
-    // --- 4. Функция сбора и отправки данных ---
-    function submitTeams() {
-    const teams = {
-        team1: [],
-        team2: []
-    };
-
-    const allSlots = document.querySelectorAll('.pokemon-slot');
-
-    try {
-        allSlots.forEach(slot => {
+    
+    // --- 6. ФУНКЦИЯ ПРОВЕРКИ ВАЛИДНОСТИ ФОРМЫ ---
+    function checkFormValidity() {
+        const teams = { team1: [], team2: [] };
+        document.querySelectorAll('.pokemon-slot').forEach(slot => {
             const species = slot.querySelector('.species-select').value;
             if (species) {
-                const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
-
-                if (selectedMoves.length > 4) {
-                    // Используем более наглядное оповещение
-                    const pokemonName = GAME_DATA.species[species].name;
-                    alert(`Ошибка: У покемона ${pokemonName} выбрано больше 4 атак!`);
-                    slot.style.border = '2px solid red';
-                    // Прерываем выполнение функции, чтобы пользователь мог исправить
-                    throw new Error("Too many moves selected");
-                }
-                slot.style.border = '1px solid #ddd';
-
-                const pokemonData = {
-                    species: species,
-                    level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
-                    ability: slot.querySelector('.ability-select').value || null,
-                    item: slot.querySelector('.item-select').value || null,
-                    moves: selectedMoves,
-                };
-
-                if (slot.dataset.teamId === "1") {
-                    teams.team1.push(pokemonData);
-                } else {
-                    teams.team2.push(pokemonData);
-                }
+                const teamData = (slot.dataset.teamId === "1") ? teams.team1 : teams.team2;
+                teamData.push(species);
             }
         });
 
-        if (teams.team1.length === 0 || teams.team2.length === 0) {
-            alert("Каждая команда должна иметь хотя бы одного покемона.");
-            return;
+        // Если в каждой команде есть хотя бы по одному покемону, показываем Главную Кнопку
+        if (teams.team1.length > 0 && teams.team2.length > 0) {
+            tg.MainButton.show();
+        } else {
+            tg.MainButton.hide();
         }
-
-        // --- ГЛАВНЫЕ ИЗМЕНЕНИЯ ЗДЕСЬ ---
-        const tg = window.Telegram.WebApp;
-
-        // 1. Отправляем данные боту в виде строки JSON
-        tg.sendData(JSON.stringify(teams));
-
-        // 2. Закрываем окно веб-приложения
-        //tg.close();
-
-    } catch (e) {
-        // Если была ошибка (например, выбрано слишком много атак),
-        // мы просто прерываем выполнение, чтобы не закрывать окно.
-        console.error(e.message);
     }
-}
+
+    // --- 7. ФУНКЦИЯ СБОРА И ОТПРАВКИ ДАННЫХ ---
+    function submitTeams() {
+        tg.MainButton.showProgress(); // Показываем крутилку на кнопке
+        tg.MainButton.disable();      // Делаем неактивной
+
+        const teams = { team1: [], team2: [] };
+        
+        try {
+            document.querySelectorAll('.pokemon-slot').forEach(slot => {
+                const species = slot.querySelector('.species-select').value;
+                if (species) {
+                    const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
+
+                    if (selectedMoves.length > 4) {
+                        const pokemonName = GAME_DATA.species[species].name;
+                        alert(`Ошибка: У покемона ${pokemonName} выбрано больше 4 атак!`);
+                        slot.style.border = '2px solid red';
+                        throw new Error("Too many moves selected");
+                    }
+                    slot.style.border = '1px solid #ddd';
+
+                    const pokemonData = {
+                        species: species,
+                        level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
+                        ability: slot.querySelector('.ability-select').value || null,
+                        item: slot.querySelector('.item-select').value || null,
+                        moves: selectedMoves,
+                    };
+                    
+                    const teamData = (slot.dataset.teamId === "1") ? teams.team1 : teams.team2;
+                    teamData.push(pokemonData);
+                }
+            });
+
+            // Отправляем данные и закрываем окно
+            tg.sendData(JSON.stringify(teams));
+            tg.close();
+
+        } catch (e) {
+            // Если была ошибка (например, >4 атак), снова включаем кнопку
+            console.error(e.message);
+            tg.MainButton.hideProgress();
+            tg.MainButton.enable();
+        }
+    }
 });
