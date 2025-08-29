@@ -1,55 +1,65 @@
 // script.js
 
-// URL вашего API на сервере. Убедитесь, что он правильный.
 const API_URL = "https://api.monster-bot.ru/api/data";
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM WEB APP ---
     const tg = window.Telegram.WebApp;
     tg.ready();
 
-    // Настраиваем Главную Кнопку, но пока не показываем её.
-    tg.MainButton.setText("Сформировать команды");
+    // --- 1. ОПРЕДЕЛЯЕМ РЕЖИМ РАБОТЫ (PVE или PVP) ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode') || 'pve'; // По умолчанию pve, если параметр не указан
+
+    // Настраиваем Главную Кнопку
+    tg.MainButton.setText(mode === 'pvp' ? "Отправить мою команду" : "Сформировать команды");
     tg.MainButton.onClick(submitTeams);
 
-    // --- 2. ПОЛУЧЕНИЕ ЭЛЕМЕНТОВ СТРАНИЦЫ ---
     const loadingDiv = document.getElementById('loading');
     const builderDiv = document.getElementById('builder');
+    const team2Container = document.querySelector('.team-container:nth-child(2)'); // Находим контейнер второй команды
     let GAME_DATA = null;
 
-    // --- 3. ЗАГРУЗКА ИГРОВЫХ ДАННЫХ С БЭКЕНДА ---
     fetch(API_URL)
         .then(response => {
-            if (!response.ok) {
-                // Если сервер не отвечает, выводим ошибку
-                throw new Error(`Ошибка сети: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`Ошибка сети: ${response.status}`);
             return response.json();
         })
         .then(data => {
             GAME_DATA = data;
-            initializeApp(); // Если данные загружены, строим интерфейс
+            initializeApp();
         })
         .catch(error => {
-            // Если произошла ошибка, сообщаем пользователю и прячем кнопку
             loadingDiv.textContent = `Ошибка загрузки данных: ${error.message}.`;
             loadingDiv.style.color = 'red';
             tg.MainButton.hide();
         });
 
-    // --- 4. ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ ---
     function initializeApp() {
         loadingDiv.style.display = 'none';
         builderDiv.style.display = 'block';
 
-        const teamContainers = [
-            { buttons: document.getElementById('team-1-tab-buttons'), contents: document.getElementById('team-1-tab-contents') },
-            { buttons: document.getElementById('team-2-tab-buttons'), contents: document.getElementById('team-2-tab-contents') }
-        ];
+        // --- 2. ЛОГИКА ОТОБРАЖЕНИЯ В ЗАВИСИМОСТИ ОТ РЕЖИМА ---
+        if (mode === 'pvp') {
+            document.querySelector('h1').textContent = 'Выбор команды для PvP';
+            if (team2Container) {
+                team2Container.style.display = 'none'; // Скрываем блок второй команды
+            }
+        }
 
-        // Создаем табы и слоты для каждой из двух команд
+        const teamContainers = [
+            { buttons: document.getElementById('team-1-tab-buttons'), contents: document.getElementById('team-1-tab-contents') }
+        ];
+        // Если режим pve, добавляем вторую команду
+        if (mode === 'pve') {
+            teamContainers.push(
+                { buttons: document.getElementById('team-2-tab-buttons'), contents: document.getElementById('team-2-tab-contents') }
+            );
+        }
+        
+        // Создаем табы и слоты
         teamContainers.forEach((container, teamIndex) => {
             for (let i = 0; i < 6; i++) {
+                // ... (весь ваш код для создания кнопок и слотов остается ЗДЕСЬ без изменений)
                 const button = document.createElement('button');
                 button.className = 'tab-button';
                 button.textContent = `Покемон ${i + 1}`;
@@ -57,13 +67,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const slot = createPokemonSlot(teamIndex + 1, i);
                 
-                // Первый таб и слот делаем активными по умолчанию
                 if (i === 0) {
                     button.classList.add('active');
                     slot.classList.add('active');
                 }
 
-                // Логика переключения табов по клику
                 button.addEventListener('click', (event) => {
                     container.buttons.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
                     container.contents.querySelectorAll('.pokemon-slot').forEach(slt => slt.classList.remove('active'));
@@ -75,111 +83,133 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.contents.appendChild(slot);
             }
         });
-    }
-    
-    // --- 5. ФУНКЦИЯ СОЗДАНИЯ ОДНОГО СЛОТА ПОКЕМОНА ---
-    function createPokemonSlot(teamId, slotId) {
-        const slot = document.createElement('div');
-        slot.className = 'pokemon-slot';
-        slot.dataset.teamId = teamId;
-        slot.dataset.slotId = slotId;
-
-        // Поля для выбора
-        const speciesLabel = document.createElement('label');
-        speciesLabel.textContent = `Вид:`;
-        const speciesSelect = document.createElement('select');
-        speciesSelect.className = 'species-select';
-        speciesSelect.appendChild(new Option("--- Не выбрано ---", ""));
-        for (const speciesId in GAME_DATA.species) {
-            speciesSelect.appendChild(new Option(GAME_DATA.species[speciesId].name, speciesId));
-        }
-
-        const levelLabel = document.createElement('label');
-        levelLabel.textContent = 'Уровень:';
-        const levelInput = document.createElement('input');
-        levelInput.className = 'level-input';
-        levelInput.type = 'number';
-        levelInput.value = 100;
-        levelInput.min = 1;
-        levelInput.max = 100;
-
-        const abilityLabel = document.createElement('label');
-        abilityLabel.textContent = 'Способность:';
-        const abilitySelect = document.createElement('select');
-        abilitySelect.className = 'ability-select';
-
-        const itemLabel = document.createElement('label');
-        itemLabel.textContent = `Предмет:`;
-        const itemSelect = document.createElement('select');
-        itemSelect.className = 'item-select';
-        GAME_DATA.items.forEach(itemId => {
-            itemSelect.appendChild(new Option(itemId, itemId));
-        });
         
-        const movesLabel = document.createElement('label');
-        movesLabel.textContent = `Атаки (до 4):`;
-        const movesSelect = document.createElement('select');
-        movesSelect.className = 'moves-select';
-        movesSelect.multiple = true;
-        movesSelect.size = 4;
-
-        slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
-
-        // Обновление способностей и атак при смене вида
-        speciesSelect.addEventListener('change', () => {
-            const selectedSpeciesId = speciesSelect.value;
-            movesSelect.innerHTML = ''; 
-            abilitySelect.innerHTML = '';
-            
-            if (selectedSpeciesId) {
-                const speciesData = GAME_DATA.species[selectedSpeciesId];
-                if (speciesData?.abilities) {
-                    speciesData.abilities.forEach(abilityId => {
-                        abilitySelect.appendChild(new Option(abilityId, abilityId));
-                    });
-                }
-                if (speciesData?.moves) {
-                    speciesData.moves.forEach(moveId => {
-                        const moveData = GAME_DATA.moves[moveId];
-                        if (moveData) movesSelect.appendChild(new Option(`${moveData.name} (${moveData.type})`, moveId));
-                    });
-                }
-            }
-            // После каждого изменения проверяем, можно ли отправлять форму
-            checkFormValidity();
-        });
-
-        return slot;
+        // Добавляем слушатель на все изменения для проверки валидности
+        builderDiv.addEventListener('change', checkFormValidity);
     }
     
-    // --- 6. ФУНКЦИЯ ПРОВЕРКИ ВАЛИДНОСТИ ФОРМЫ ---
+    // Функция createPokemonSlot остается БЕЗ ИЗМЕНЕНИЙ
+
+    function createPokemonSlot(teamId, slotId) {
+        // ... (весь ваш код этой функции остается здесь)
+        const slot = document.createElement('div');
+        slot.className = 'pokemon-slot';
+        slot.dataset.teamId = teamId;
+        slot.dataset.slotId = slotId;
+
+        // Поля для выбора
+        const speciesLabel = document.createElement('label');
+        speciesLabel.textContent = `Вид:`;
+        const speciesSelect = document.createElement('select');
+        speciesSelect.className = 'species-select';
+        speciesSelect.appendChild(new Option("--- Не выбрано ---", ""));
+        for (const speciesId in GAME_DATA.species) {
+            speciesSelect.appendChild(new Option(GAME_DATA.species[speciesId].name, speciesId));
+        }
+
+        const levelLabel = document.createElement('label');
+        levelLabel.textContent = 'Уровень:';
+        const levelInput = document.createElement('input');
+        levelInput.className = 'level-input';
+        levelInput.type = 'number';
+        levelInput.value = 100;
+        levelInput.min = 1;
+        levelInput.max = 100;
+
+        const abilityLabel = document.createElement('label');
+        abilityLabel.textContent = 'Способность:';
+        const abilitySelect = document.createElement('select');
+        abilitySelect.className = 'ability-select';
+
+        const itemLabel = document.createElement('label');
+        itemLabel.textContent = `Предмет:`;
+        const itemSelect = document.createElement('select');
+        itemSelect.className = 'item-select';
+        GAME_DATA.items.forEach(itemId => {
+            itemSelect.appendChild(new Option(itemId, itemId));
+        });
+        
+        const movesLabel = document.createElement('label');
+        movesLabel.textContent = `Атаки (до 4):`;
+        const movesSelect = document.createElement('select');
+        movesSelect.className = 'moves-select';
+        movesSelect.multiple = true;
+        movesSelect.size = 4;
+
+        slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
+
+        // Обновление способностей и атак при смене вида
+        speciesSelect.addEventListener('change', () => {
+            const selectedSpeciesId = speciesSelect.value;
+            movesSelect.innerHTML = ''; 
+            abilitySelect.innerHTML = '';
+            
+            if (selectedSpeciesId) {
+                const speciesData = GAME_DATA.species[selectedSpeciesId];
+                if (speciesData?.abilities) {
+                    speciesData.abilities.forEach(abilityId => {
+                        abilitySelect.appendChild(new Option(abilityId, abilityId));
+                    });
+                }
+                if (speciesData?.moves) {
+                    speciesData.moves.forEach(moveId => {
+                        const moveData = GAME_DATA.moves[moveId];
+                        if (moveData) movesSelect.appendChild(new Option(`${moveData.name} (${moveData.type})`, moveId));
+                    });
+                }
+            }
+        });
+
+        return slot;
+    }
+
     function checkFormValidity() {
-        const teams = { team1: [], team2: [] };
-        document.querySelectorAll('.pokemon-slot').forEach(slot => {
+        const teams = { team1: [] };
+        // Собираем только первую команду
+        document.querySelectorAll('.pokemon-slot[data-team-id="1"]').forEach(slot => {
             const species = slot.querySelector('.species-select').value;
             if (species) {
-                const teamData = (slot.dataset.teamId === "1") ? teams.team1 : teams.team2;
-                teamData.push(species);
+                teams.team1.push(species);
             }
         });
 
-        // Если в каждой команде есть хотя бы по одному покемону, показываем Главную Кнопку
-        if (teams.team1.length > 0 && teams.team2.length > 0) {
+        let isValid = false;
+        if (mode === 'pvp') {
+            // В PvP режиме достаточно хотя бы одного покемона в первой команде
+            isValid = teams.team1.length > 0;
+        } else {
+            // В PvE режиме нужна и вторая команда
+            teams.team2 = [];
+            document.querySelectorAll('.pokemon-slot[data-team-id="2"]').forEach(slot => {
+                const species = slot.querySelector('.species-select').value;
+                if (species) {
+                    teams.team2.push(species);
+                }
+            });
+            isValid = teams.team1.length > 0 && teams.team2.length > 0;
+        }
+
+        if (isValid) {
             tg.MainButton.show();
         } else {
             tg.MainButton.hide();
         }
     }
 
-    // --- 7. ФУНКЦИЯ СБОРА И ОТПРАВКИ ДАННЫХ ---
     function submitTeams() {
-        tg.MainButton.showProgress(); // Показываем крутилку на кнопке
-        tg.MainButton.disable();      // Делаем неактивной
+        // ... (эта функция остается практически без изменений,
+        // но теперь она будет собирать данные только из видимых полей)
+        tg.MainButton.showProgress();
+        tg.MainButton.disable();
 
         const teams = { team1: [], team2: [] };
         
         try {
             document.querySelectorAll('.pokemon-slot').forEach(slot => {
+                // Проверяем, видим ли слот. Если да, то обрабатываем.
+                // Это естественным образом отсеет скрытую команду 2 в pvp-режиме
+                if (slot.offsetParent === null) return;
+
                 const species = slot.querySelector('.species-select').value;
                 if (species) {
                     const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
@@ -200,21 +230,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         moves: selectedMoves,
                     };
                     
+                    // Распределяем по командам
                     const teamData = (slot.dataset.teamId === "1") ? teams.team1 : teams.team2;
                     teamData.push(pokemonData);
                 }
             });
 
-            // Отправляем данные и закрываем окно
-            tg.sendData(JSON.stringify(teams));
-            //tg.close();
+            // В pvp режиме в объекте будет только team1
+            const dataToSend = (mode === 'pvp') ? { team1: teams.team1 } : teams;
+
+            tg.sendData(JSON.stringify(dataToSend));
+            // tg.close(); // Раскомментируйте, если хотите закрывать окно после отправки
 
         } catch (e) {
-            // Если была ошибка (например, >4 атак), снова включаем кнопку
             console.error(e.message);
             tg.MainButton.hideProgress();
             tg.MainButton.enable();
         }
     }
 });
-
