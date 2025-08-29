@@ -1,7 +1,7 @@
 // script.js
 
 // Используйте эту строку для локального теста (с правкой файла hosts)
-const API_URL = "https://api.monster-bot.ru/api/data";
+const API_URL = "http://api.monster-bot.ru:8000/api/data";
 
 document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
@@ -158,32 +158,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 4. Функция сбора и отправки данных ---
     function submitTeams() {
-        const teams = {
-            team1: [],
-            team2: []
-        };
+    const teams = {
+        team1: [],
+        team2: []
+    };
 
-        const allSlots = document.querySelectorAll('.pokemon-slot');
+    const allSlots = document.querySelectorAll('.pokemon-slot');
+
+    try {
         allSlots.forEach(slot => {
-        const species = slot.querySelector('.species-select').value;
-            // Собираем данные, только если покемон выбран
+            const species = slot.querySelector('.species-select').value;
             if (species) {
                 const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
 
                 if (selectedMoves.length > 4) {
-                    alert(`Ошибка: У покемона ${species} выбрано больше 4 атак!`);
-                    // Прерываем отправку, подсветив проблемный слот
+                    // Используем более наглядное оповещение
+                    const pokemonName = GAME_DATA.species[species].name;
+                    alert(`Ошибка: У покемона ${pokemonName} выбрано больше 4 атак!`);
                     slot.style.border = '2px solid red';
+                    // Прерываем выполнение функции, чтобы пользователь мог исправить
                     throw new Error("Too many moves selected");
                 }
-                slot.style.border = '1px solid #ddd'; // Сбрасываем подсветку
+                slot.style.border = '1px solid #ddd';
 
                 const pokemonData = {
-                species: species,
-                level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
-                ability: slot.querySelector('.ability-select').value || null,
-                item: slot.querySelector('.item-select').value || null,
-                moves: Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value),
+                    species: species,
+                    level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
+                    ability: slot.querySelector('.ability-select').value || null,
+                    item: slot.querySelector('.item-select').value || null,
+                    moves: selectedMoves,
                 };
 
                 if (slot.dataset.teamId === "1") {
@@ -199,11 +202,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        console.log("Отправляемые данные:", teams);
-        // tg.sendData(JSON.stringify(teams));
-        // tg.close();
-        alert("Команды сформированы! (Отправка в Telegram закомментирована для теста)");
+        // --- ГЛАВНЫЕ ИЗМЕНЕНИЯ ЗДЕСЬ ---
+        const tg = window.Telegram.WebApp;
+
+        // 1. Отправляем данные боту в виде строки JSON
+        tg.sendData(JSON.stringify(teams));
+
+        // 2. Закрываем окно веб-приложения
+        tg.close();
+
+    } catch (e) {
+        // Если была ошибка (например, выбрано слишком много атак),
+        // мы просто прерываем выполнение, чтобы не закрывать окно.
+        console.error(e.message);
     }
+}
 });
-
-
