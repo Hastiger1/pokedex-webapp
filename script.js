@@ -7,19 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
     tg.ready();
 
-    // --- НАСТРАИВАЕМ ГЛАВНУЮ КНОПКУ ---
-    tg.MainButton.setText("Сформировать команды");
-    tg.MainButton.show();
-    // Назначаем нашу функцию-отправщик на клик по этой кнопке
-    tg.MainButton.onClick(submitTeams);
-    // ---
-
     const loadingDiv = document.getElementById('loading');
     const builderDiv = document.getElementById('builder');
-    // Старая HTML-кнопка нам больше не нужна
-    // const submitButton = document.getElementById('submit-button');
-    
+    const submitButton = document.getElementById('submit-button');
+
     let GAME_DATA = null;
+
     // --- 1. Загрузка данных ---
     fetch(API_URL)
         .then(response => response.ok ? response.json() : Promise.reject(new Error(`Ошибка сети: ${response.status}`)))
@@ -30,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => {
             loadingDiv.textContent = `Ошибка загрузки данных: ${error.message}. Убедитесь, что локальный сервер запущен.`;
             loadingDiv.style.color = 'red';
-            tg.MainButton.hide();
         });
 
     // --- 2. Инициализация приложения ---
@@ -166,72 +158,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 4. Функция сбора и отправки данных ---
     function submitTeams() {
+    const teams = {
+        team1: [],
+        team2: []
+    };
 
-        // Делаем кнопку неактивной, чтобы избежать двойных нажатий
-        tg.MainButton.showProgress();
-        tg.MainButton.disable();    
-        const teams = {
-            team1: [],
-            team2: []
-        };
-    
-        const allSlots = document.querySelectorAll('.pokemon-slot');
-    
-        try {
-            allSlots.forEach(slot => {
-                const species = slot.querySelector('.species-select').value;
-                if (species) {
-                    const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
-    
-                    if (selectedMoves.length > 4) {
-                        // Используем более наглядное оповещение
-                        const pokemonName = GAME_DATA.species[species].name;
-                        alert(`Ошибка: У покемона ${pokemonName} выбрано больше 4 атак!`);
-                        slot.style.border = '2px solid red';
-                        // Прерываем выполнение функции, чтобы пользователь мог исправить
-                        throw new Error("Too many moves selected");
-                    }
-                    slot.style.border = '1px solid #ddd';
-    
-                    const pokemonData = {
-                        species: species,
-                        level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
-                        ability: slot.querySelector('.ability-select').value || null,
-                        item: slot.querySelector('.item-select').value || null,
-                        moves: selectedMoves,
-                    };
-    
-                    if (slot.dataset.teamId === "1") {
-                        teams.team1.push(pokemonData);
-                    } else {
-                        teams.team2.push(pokemonData);
-                    }
+    const allSlots = document.querySelectorAll('.pokemon-slot');
+
+    try {
+        allSlots.forEach(slot => {
+            const species = slot.querySelector('.species-select').value;
+            if (species) {
+                const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
+
+                if (selectedMoves.length > 4) {
+                    // Используем более наглядное оповещение
+                    const pokemonName = GAME_DATA.species[species].name;
+                    alert(`Ошибка: У покемона ${pokemonName} выбрано больше 4 атак!`);
+                    slot.style.border = '2px solid red';
+                    // Прерываем выполнение функции, чтобы пользователь мог исправить
+                    throw new Error("Too many moves selected");
                 }
-            });
-    
-            if (teams.team1.length === 0 || teams.team2.length === 0) {
-                alert("Каждая команда должна иметь хотя бы одного покемона.");
-                return;
+                slot.style.border = '1px solid #ddd';
+
+                const pokemonData = {
+                    species: species,
+                    level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
+                    ability: slot.querySelector('.ability-select').value || null,
+                    item: slot.querySelector('.item-select').value || null,
+                    moves: selectedMoves,
+                };
+
+                if (slot.dataset.teamId === "1") {
+                    teams.team1.push(pokemonData);
+                } else {
+                    teams.team2.push(pokemonData);
+                }
             }
-    
-            // --- ГЛАВНЫЕ ИЗМЕНЕНИЯ ЗДЕСЬ ---
-            const tg = window.Telegram.WebApp;
-    
-            // 1. Отправляем данные боту в виде строки JSON
-            tg.sendData(JSON.stringify(teams));
-    
-            // 2. Закрываем окно веб-приложения
-            //tg.close();
-    
-        } catch (e) {
-            // Если была ошибка (например, выбрано слишком много атак),
-            // мы просто прерываем выполнение, чтобы не закрывать окно.
-            console.error(e.message);
-            tg.MainButton.hideProgress();
-            tg.MainButton.enable();
+        });
+
+        if (teams.team1.length === 0 || teams.team2.length === 0) {
+            alert("Каждая команда должна иметь хотя бы одного покемона.");
+            return;
+        }
+
+        // --- ГЛАВНЫЕ ИЗМЕНЕНИЯ ЗДЕСЬ ---
+        const tg = window.Telegram.WebApp;
+
+        // 1. Отправляем данные боту в виде строки JSON
+        tg.sendData(JSON.stringify(teams));
+
+        // 2. Закрываем окно веб-приложения
+        //tg.close();
+
+    } catch (e) {
+        // Если была ошибка (например, выбрано слишком много атак),
+        // мы просто прерываем выполнение, чтобы не закрывать окно.
+        console.error(e.message);
     }
 }
 });
-
-
-
