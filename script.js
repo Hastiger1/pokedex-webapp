@@ -239,9 +239,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // В pvp режиме в объекте будет только team1
             const dataToSend = (mode === 'pvp') ? { team1: teams.team1 } : teams;
 
+            console.log('ОТПРАВЛЯЮТСЯ ДАННЫЕ:', JSON.stringify(dataToSend));
+            
             tg.sendData(JSON.stringify(dataToSend));
             // tg.close(); // Раскомментируйте, если хотите закрывать окно после отправки
-
+            
         } catch (e) {
             console.error(e.message);
             tg.MainButton.hideProgress();
@@ -249,3 +251,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
