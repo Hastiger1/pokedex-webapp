@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tg.sendData(JSON.stringify(teams));
     
             // 2. Закрываем окно веб-приложения
-            tg.close();
+            //tg.close();
     
         } catch (e) {
             // Если была ошибка (например, выбрано слишком много атак),
@@ -232,5 +232,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 }
 });
+
 
 
