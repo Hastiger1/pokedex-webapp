@@ -222,37 +222,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const teams = { team1: [], team2: [] };
         
         try {
-            document.querySelectorAll('.pokemon-slot').forEach(slot => {
-                // Проверяем, видим ли слот. Если да, то обрабатываем.
-                // Это естественным образом отсеет скрытую команду 2 в pvp-режиме
-                if (slot.offsetParent === null) return;
+        console.log("--- Начинаю сбор данных из слотов ---"); // <--- Начало отладки
 
-                const species = slot.querySelector('.species-select').value;
-                if (species) {
-                    const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
+        document.querySelectorAll('.pokemon-slot').forEach((slot, index) => {
+            // Для каждого найденного слота...
+            const teamId = slot.dataset.teamId;
+            const speciesSelect = slot.querySelector('.species-select');
+            const species = speciesSelect ? speciesSelect.value : 'НЕ НАЙДЕН';
 
-                    if (selectedMoves.length > 4) {
-                        const pokemonName = GAME_DATA.species[species].name;
-                        alert(`Ошибка: У покемона ${pokemonName} выбрано больше 4 атак!`);
-                        slot.style.border = '2px solid red';
-                        throw new Error("Too many moves selected");
-                    }
-                    slot.style.border = '1px solid #ddd';
+            // --- ВЫВОДИМ В КОНСОЛЬ ВСЮ ИНФОРМАЦИЮ О СЛОТЕ ---
+            console.log(`Слот #${index} | Команда: ${teamId} | Найденный вид: "${species}"`);
 
-                    const pokemonData = {
-                        species: species,
-                        level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
-                        ability: slot.querySelector('.ability-select').value || null,
-                        item: slot.querySelector('.item-select').value || null,
-                        moves: selectedMoves,
-                    };
-                    
-                    // Распределяем по командам
-                    const teamData = (slot.dataset.teamId === "1") ? teams.team1 : teams.team2;
-                    teamData.push(pokemonData);
-                }
-            });
+            if (species && species !== 'НЕ НАЙДЕН') {
+                console.log(`   └-- Вид найден! Собираю данные для ${species}...`);
+                // ... (остальная логика сбора данных для pokemonData без изменений)
+                const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
+                const pokemonData = {
+                    species: species,
+                    level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
+                    ability: slot.querySelector('.ability-select').value || null,
+                    item: slot.querySelector('.item-select').value || null,
+                    moves: selectedMoves,
+                };
+                
+                const teamData = (teamId === "1") ? teams.team1 : teams.team2;
+                teamData.push(pokemonData);
+            }
+        });
 
+        console.log("--- Сбор данных завершен ---"); // <--- Конец отладки
             // В pvp режиме в объекте будет только team1
             const dataToSend = (mode === 'pvp') ? { team1: teams.team1 } : teams;
 
@@ -268,5 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
