@@ -6,13 +6,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
     tg.ready();
 
+    const isBrowser = tg.platform === 'unknown' || !tg.platform;
     // --- 1. ОПРЕДЕЛЯЕМ РЕЖИМ РАБОТЫ (PVE или PVP) ---
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode') || 'pve'; // По умолчанию pve, если параметр не указан
 
-    // Настраиваем Главную Кнопку
-    tg.MainButton.setText(mode === 'pvp' ? "Отправить мою команду" : "Сформировать команды");
-    tg.MainButton.onClick(submitTeams);
+    const browserButton = document.getElementById('submit-button');
+    
+     if (isBrowser) {
+        // Если мы в браузере, делаем нашу HTML-кнопку видимой и вешаем на нее событие
+        browserButton.style.display = 'block';
+        browserButton.addEventListener('click', submitTeams);
+    } else {
+        // Если мы в Телеграме, скрываем HTML-кнопку и настраиваем кнопку Телеграма
+        browserButton.style.display = 'none';
+        tg.MainButton.setText(mode === 'pvp' ? "Отправить мою команду" : "Сформировать команды");
+        tg.MainButton.onClick(submitTeams);
+    }
 
     const loadingDiv = document.getElementById('loading');
     const builderDiv = document.getElementById('builder');
@@ -189,11 +199,18 @@ document.addEventListener('DOMContentLoaded', () => {
             isValid = teams.team1.length > 0 && teams.team2.length > 0;
         }
 
-        if (isValid) {
-            tg.MainButton.show();
+        if (isBrowser) {
+            // В браузере показываем или прячем нашу HTML-кнопку
+            browserButton.style.display = isValid ? 'block' : 'none';
         } else {
-            tg.MainButton.hide();
+            // В Телеграме показываем или прячем кнопку Телеграма
+            if (isValid) {
+                tg.MainButton.show();
+            } else {
+                tg.MainButton.hide();
+            }
         }
+    
     }
 
     function submitTeams() {
@@ -251,4 +268,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
