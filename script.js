@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
         itemLabel.textContent = `Предмет:`;
         const itemSelect = document.createElement('select');
         itemSelect.className = 'item-select';
+        itemSelect.appendChild(new Option("--- Без предмета ---", ""));
         GAME_DATA.items.forEach(itemId => {
             itemSelect.appendChild(new Option(itemId, itemId));
         });
@@ -266,6 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
 
