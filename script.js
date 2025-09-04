@@ -114,8 +114,17 @@ document.addEventListener('DOMContentLoaded', () => {
         speciesSelect.className = 'species-select';
         speciesSelect.appendChild(new Option("--- Не выбрано ---", ""));
         for (const speciesId in GAME_DATA.species) {
-            speciesSelect.appendChild(new Option(GAME_DATA.species[speciesId].name, speciesId));
-        }
+        const speciesData = GAME_DATA.species[speciesId];
+        
+        // Проверяем, есть ли у формы флаг "BATTLEONLY"
+        // (с учетом того, что поле flags может отсутствовать)
+        const isBattleOnly = speciesData.flags && speciesData.flags.includes("BATTLEONLY");
+
+        // Добавляем в список, только если это НЕ боевая форма
+        if (!isBattleOnly) {
+            speciesSelect.appendChild(new Option(speciesData.display_name, speciesId));
+            }
+        }
 
         const levelLabel = document.createElement('label');
         levelLabel.textContent = 'Уровень:';
@@ -303,6 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
 
