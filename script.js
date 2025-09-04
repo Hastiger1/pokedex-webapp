@@ -141,71 +141,67 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         const movesLabel = document.createElement('label');
-        movesLabel.textContent = `Атаки (до 4):`;
-        
-        // --- НАЧАЛО ИЗМЕНЕНИЙ ---
-        
-        // Вместо <select> создаем обычный <div>, который будет контейнером для наших атак
-        const movesContainer = document.createElement('div');
-        movesContainer.className = 'moves-container'; // Добавим класс для стилизации
-        
-        // Заменяем старый movesSelect на наш новый контейнер
-        slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesContainer);
-        // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    movesLabel.textContent = `Атаки (до 4):`;
+    
+    // Возвращаем <select>, но увеличиваем его высоту для удобства
+    const movesSelect = document.createElement('select');
+    movesSelect.className = 'moves-select';
+    movesSelect.multiple = true;
+    movesSelect.size = 8; // Сделаем список выше, чтобы было удобнее прокручивать
 
-        // Обновление способностей и атак при смене вида
-        speciesSelect.addEventListener('change', () => {
-            const selectedSpeciesId = speciesSelect.value;
-            // --- ИЗМЕНЕНИЕ: Очищаем наш новый контейнер ---
-            movesContainer.innerHTML = ''; 
-            abilitySelect.innerHTML = '';
-            
-            if (selectedSpeciesId) {
-                const speciesData = GAME_DATA.species[selectedSpeciesId];
-                if (speciesData?.abilities) {
-                    speciesData.abilities.forEach(abilityId => {
-                        abilitySelect.appendChild(new Option(abilityId, abilityId));
-                    });
-                }
-                if (speciesData?.moves) {
-                    // --- ИЗМЕНЕНИЕ: Создаем список с чекбоксами вместо <option> ---
-                    speciesData.moves.forEach(moveId => {
-                        const moveData = GAME_DATA.moves[moveId];
-                        if (moveData) {
-                            // Создаем обертку для строки (чекбокс + название)
-                            const moveWrapper = document.createElement('div');
-                            moveWrapper.className = 'move-item';
+    // --- ВОТ ГЛАВНЫЙ ТРЮК ---
+    // Мы перехватываем событие "нажатия" мыши ДО того, как браузер успеет среагировать
+    movesSelect.addEventListener('mousedown', function(event) {
+        // Запрещаем браузеру выполнять стандартное действие (выбор с Ctrl)
+        event.preventDefault();
 
-                            // Создаем чекбокс
-                            const checkbox = document.createElement('input');
-                            checkbox.type = 'checkbox';
-                            checkbox.value = moveId;
-                            checkbox.id = `move-${teamId}-${slotId}-${moveId}`;
-                            checkbox.className = 'move-checkbox';
+        const option = event.target;
+        // Убеждаемся, что кликнули именно на элемент <option>
+        if (option.tagName === 'OPTION') {
+            // Считаем, сколько уже выбрано
+            const selectedCount = Array.from(this.options).filter(opt => opt.selected).length;
 
-                            // Создаем label для чекбокса (чтобы можно было кликать на текст)
-                            const label = document.createElement('label');
-                            label.htmlFor = checkbox.id;
-                            label.textContent = `${moveData.name} (${moveData.type})`;
-                            
-                            // Добавляем логику ограничения (не больше 4 атак)
-                            checkbox.addEventListener('change', () => {
-                                const checkedCount = slot.querySelectorAll('.move-checkbox:checked').length;
-                                if (checkedCount > 4) {
-                                    alert('Можно выбрать не более 4 атак!');
-                                    checkbox.checked = false; // Отменяем выбор
-                                }
-                            });
-
-                            moveWrapper.append(checkbox, label);
-                            movesContainer.appendChild(moveWrapper);
-                        }
-                    });
+            // Инвертируем выбор: если был выбран - снимаем, если нет - выбираем
+            if (option.selected) {
+                option.selected = false;
+            } else {
+                // Позволяем выбрать, только если лимит (4) еще не достигнут
+                if (selectedCount < 4) {
+                    option.selected = true;
+                } else {
+                    alert('Можно выбрать не более 4 атак!');
                 }
             }
-        });
-        return slot;
-    }
+        }
+    });
+
+    slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
+
+    // Логика обновления списка атак остается прежней
+    speciesSelect.addEventListener('change', () => {
+        const selectedSpeciesId = speciesSelect.value;
+        movesSelect.innerHTML = '';
+        abilitySelect.innerHTML = '';
+        
+        if (selectedSpeciesId) {
+            // ... (весь ваш код для заполнения <option> для атак и способностей без изменений)
+            const speciesData = GAME_DATA.species[selectedSpeciesId];
+            if (speciesData?.abilities) {
+                speciesData.abilities.forEach(abilityId => {
+                    abilitySelect.appendChild(new Option(abilityId, abilityId));
+                });
+            }
+            if (speciesData?.moves) {
+                speciesData.moves.forEach(moveId => {
+                    const moveData = GAME_DATA.moves[moveId];
+                    if (moveData) movesSelect.appendChild(new Option(`${moveData.name} (${moveData.type})`, moveId));
+                });
+            }
+        }
+    });
+
+    return slot;
+}
 
     function checkFormValidity() {
         const teams = { team1: [] };
@@ -270,8 +266,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (species && species !== 'НЕ НАЙДЕН') {
                 console.log(`   └-- Вид найден! Собираю данные для ${species}...`);
                 // ... (остальная логика сбора данных для pokemonData без изменений)
-                const selectedMoves = Array.from(slot.querySelectorAll('.move-checkbox:checked'))
-                                               .map(checkbox => checkbox.value);
+                const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions)
+                                             .map(opt => opt.value);
+                
+                // Проверка на количество атак здесь снова становится полезной как финальный контроль
+                if (selectedMoves.length > 4) {
+                    alert(`Ошибка: У покемона выбрано больше 4 атак!`);
+                    throw new Error("Too many moves selected");
+                }
                 const pokemonData = {
                     species: species,
                     level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
@@ -301,6 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
 
