@@ -141,37 +141,70 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         const movesLabel = document.createElement('label');
-        movesLabel.textContent = `Атаки (до 4):`;
-        const movesSelect = document.createElement('select');
-        movesSelect.className = 'moves-select';
-        movesSelect.multiple = true;
-        movesSelect.size = 4;
+        movesLabel.textContent = `Атаки (до 4):`;
+        
+        // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+        
+        // Вместо <select> создаем обычный <div>, который будет контейнером для наших атак
+        const movesContainer = document.createElement('div');
+        movesContainer.className = 'moves-container'; // Добавим класс для стилизации
+        
+        // Заменяем старый movesSelect на наш новый контейнер
+        slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesContainer);
+        // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
-        slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
+        // Обновление способностей и атак при смене вида
+        speciesSelect.addEventListener('change', () => {
+            const selectedSpeciesId = speciesSelect.value;
+            // --- ИЗМЕНЕНИЕ: Очищаем наш новый контейнер ---
+            movesContainer.innerHTML = ''; 
+            abilitySelect.innerHTML = '';
+            
+            if (selectedSpeciesId) {
+                const speciesData = GAME_DATA.species[selectedSpeciesId];
+                if (speciesData?.abilities) {
+                    speciesData.abilities.forEach(abilityId => {
+                        abilitySelect.appendChild(new Option(abilityId, abilityId));
+                    });
+                }
+                if (speciesData?.moves) {
+                    // --- ИЗМЕНЕНИЕ: Создаем список с чекбоксами вместо <option> ---
+                    speciesData.moves.forEach(moveId => {
+                        const moveData = GAME_DATA.moves[moveId];
+                        if (moveData) {
+                            // Создаем обертку для строки (чекбокс + название)
+                            const moveWrapper = document.createElement('div');
+                            moveWrapper.className = 'move-item';
 
-        // Обновление способностей и атак при смене вида
-        speciesSelect.addEventListener('change', () => {
-            const selectedSpeciesId = speciesSelect.value;
-            movesSelect.innerHTML = ''; 
-            abilitySelect.innerHTML = '';
-            
-            if (selectedSpeciesId) {
-                const speciesData = GAME_DATA.species[selectedSpeciesId];
-                if (speciesData?.abilities) {
-                    speciesData.abilities.forEach(abilityId => {
-                        abilitySelect.appendChild(new Option(abilityId, abilityId));
-                    });
-                }
-                if (speciesData?.moves) {
-                    speciesData.moves.forEach(moveId => {
-                        const moveData = GAME_DATA.moves[moveId];
-                        if (moveData) movesSelect.appendChild(new Option(`${moveData.name} (${moveData.type})`, moveId));
-                    });
-                }
-            }
-        });
+                            // Создаем чекбокс
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.value = moveId;
+                            checkbox.id = `move-${teamId}-${slotId}-${moveId}`;
+                            checkbox.className = 'move-checkbox';
 
-        return slot;
+                            // Создаем label для чекбокса (чтобы можно было кликать на текст)
+                            const label = document.createElement('label');
+                            label.htmlFor = checkbox.id;
+                            label.textContent = `${moveData.name} (${moveData.type})`;
+                            
+                            // Добавляем логику ограничения (не больше 4 атак)
+                            checkbox.addEventListener('change', () => {
+                                const checkedCount = slot.querySelectorAll('.move-checkbox:checked').length;
+                                if (checkedCount > 4) {
+                                    alert('Можно выбрать не более 4 атак!');
+                                    checkbox.checked = false; // Отменяем выбор
+                                }
+                            });
+
+                            moveWrapper.append(checkbox, label);
+                            movesContainer.appendChild(moveWrapper);
+                        }
+                    });
+                }
+            }
+        });
+        return slot;
     }
 
     function checkFormValidity() {
@@ -237,7 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (species && species !== 'НЕ НАЙДЕН') {
                 console.log(`   └-- Вид найден! Собираю данные для ${species}...`);
                 // ... (остальная логика сбора данных для pokemonData без изменений)
-                const selectedMoves = Array.from(slot.querySelector('.moves-select').selectedOptions).map(opt => opt.value);
+                const selectedMoves = Array.from(slot.querySelectorAll('.move-checkbox:checked'))
+                                               .map(checkbox => checkbox.value);
                 const pokemonData = {
                     species: species,
                     level: parseInt(slot.querySelector('.level-input').value, 10) || 100,
@@ -267,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
 
