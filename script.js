@@ -1,24 +1,19 @@
 // script.js
 
-const API_URL = "https://api.monster-bot.ru/api/data";
-
 document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
     tg.ready();
 
     const isBrowser = tg.platform === 'unknown' || !tg.platform;
-    // --- 1. ОПРЕДЕЛЯЕМ РЕЖИМ РАБОТЫ (PVE или PVP) ---
     const urlParams = new URLSearchParams(window.location.search);
-    const mode = urlParams.get('mode') || 'pve'; // По умолчанию pve, если параметр не указан
+    const mode = urlParams.get('mode') || 'pve';
 
     const browserButton = document.getElementById('submit-button');
-    
-     if (isBrowser) {
-        // Если мы в браузере, делаем нашу HTML-кнопку видимой и вешаем на нее событие
+
+    if (isBrowser) {
         browserButton.style.display = 'block';
         browserButton.addEventListener('click', submitTeams);
     } else {
-        // Если мы в Телеграме, скрываем HTML-кнопку и настраиваем кнопку Телеграма
         browserButton.style.display = 'none';
         tg.MainButton.setText(mode === 'pvp' ? "Отправить мою команду" : "Сформировать команды");
         tg.MainButton.onClick(submitTeams);
@@ -26,7 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadingDiv = document.getElementById('loading');
     const builderDiv = document.getElementById('builder');
-    const team2Container = document.querySelector('.team-container:nth-child(2)'); // Находим контейнер второй команды
     let GAME_DATA = null;
 
     fetch(API_URL)
@@ -39,44 +33,40 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeApp();
         })
         .catch(error => {
-            loadingDiv.textContent = `Ошибка загрузки данных: ${error.message}.`;
+            loadingDiv.textContent = `Ошибка загрузки данных: ${error.message}. Проверьте консоль (F12) на наличие ошибок CORS.`;
             loadingDiv.style.color = 'red';
-            tg.MainButton.hide();
+            if (!isBrowser) tg.MainButton.hide();
         });
 
     function initializeApp() {
         loadingDiv.style.display = 'none';
         builderDiv.style.display = 'block';
 
-        // --- 2. ЛОГИКА ОТОБРАЖЕНИЯ В ЗАВИСИМОСТИ ОТ РЕЖИМА ---
         if (mode === 'pvp') {
             document.querySelector('h1').textContent = 'Выбор команды для PvP';
+            const team2Container = document.querySelector('.team-container:nth-child(2)');
             if (team2Container) {
-                team2Container.style.display = 'none'; // Скрываем блок второй команды
+                team2Container.style.display = 'none';
             }
         }
 
         const teamContainers = [
             { buttons: document.getElementById('team-1-tab-buttons'), contents: document.getElementById('team-1-tab-contents') }
         ];
-        // Если режим pve, добавляем вторую команду
         if (mode === 'pve') {
             teamContainers.push(
                 { buttons: document.getElementById('team-2-tab-buttons'), contents: document.getElementById('team-2-tab-contents') }
             );
         }
-        
-        // Создаем табы и слоты
+
         teamContainers.forEach((container, teamIndex) => {
             for (let i = 0; i < 6; i++) {
-                // ... (весь ваш код для создания кнопок и слотов остается ЗДЕСЬ без изменений)
                 const button = document.createElement('button');
                 button.className = 'tab-button';
                 button.textContent = `Покемон ${i + 1}`;
                 button.dataset.slotId = i;
-
                 const slot = createPokemonSlot(teamIndex + 1, i);
-                
+
                 if (i === 0) {
                     button.classList.add('active');
                     slot.classList.add('active');
@@ -93,124 +83,108 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.contents.appendChild(slot);
             }
         });
-        
-        // Добавляем слушатель на все изменения для проверки валидности
         builderDiv.addEventListener('change', checkFormValidity);
     }
-    
-    // Функция createPokemonSlot остается БЕЗ ИЗМЕНЕНИЙ
 
     function createPokemonSlot(teamId, slotId) {
-        // ... (весь ваш код этой функции остается здесь)
         const slot = document.createElement('div');
-        slot.className = 'pokemon-slot';
-        slot.dataset.teamId = teamId;
-        slot.dataset.slotId = slotId;
+        slot.className = 'pokemon-slot';
+        slot.dataset.teamId = teamId;
+        slot.dataset.slotId = slotId;
 
-        // Поля для выбора
-        const speciesLabel = document.createElement('label');
-        speciesLabel.textContent = `Вид:`;
-        const speciesSelect = document.createElement('select');
-        speciesSelect.className = 'species-select';
-        speciesSelect.appendChild(new Option("--- Не выбрано ---", ""));
-        for (const speciesId in GAME_DATA.species) {
-        const speciesData = GAME_DATA.species[speciesId];
+        const speciesLabel = document.createElement('label');
+        speciesLabel.textContent = `Вид:`;
+        const speciesSelect = document.createElement('select');
+        speciesSelect.className = 'species-select';
+        speciesSelect.appendChild(new Option("--- Не выбрано ---", ""));
         
-        // Проверяем, есть ли у формы флаг "BATTLEONLY"
-        // (с учетом того, что поле flags может отсутствовать)
-        const isBattleOnly = speciesData.flags && speciesData.flags.includes("BATTLEONLY");
-
-        // Добавляем в список, только если это НЕ боевая форма
-        if (!isBattleOnly) {
-            speciesSelect.appendChild(new Option(speciesData.display_name, speciesId));
-            }
-        }
-
-        const levelLabel = document.createElement('label');
-        levelLabel.textContent = 'Уровень:';
-        const levelInput = document.createElement('input');
-        levelInput.className = 'level-input';
-        levelInput.type = 'number';
-        levelInput.value = 100;
-        levelInput.min = 1;
-        levelInput.max = 100;
-
-        const abilityLabel = document.createElement('label');
-        abilityLabel.textContent = 'Способность:';
-        const abilitySelect = document.createElement('select');
-        abilitySelect.className = 'ability-select';
-
-        const itemLabel = document.createElement('label');
-        itemLabel.textContent = `Предмет:`;
-        const itemSelect = document.createElement('select');
-        itemSelect.className = 'item-select';
-        itemSelect.appendChild(new Option("--- Без предмета ---", ""));
-        GAME_DATA.items.forEach(itemId => {
-            itemSelect.appendChild(new Option(itemId, itemId));
-        });
-        
-        const movesLabel = document.createElement('label');
-    movesLabel.textContent = `Атаки (до 4):`;
-    
-    // Возвращаем <select>, но увеличиваем его высоту для удобства
-    const movesSelect = document.createElement('select');
-    movesSelect.className = 'moves-select';
-    movesSelect.multiple = true;
-    movesSelect.size = 8; // Сделаем список выше, чтобы было удобнее прокручивать
-
-    // --- ВОТ ГЛАВНЫЙ ТРЮК ---
-    // Мы перехватываем событие "нажатия" мыши ДО того, как браузер успеет среагировать
-    movesSelect.addEventListener('mousedown', function(event) {
-        // Запрещаем браузеру выполнять стандартное действие (выбор с Ctrl)
-        event.preventDefault();
-
-        const option = event.target;
-        // Убеждаемся, что кликнули именно на элемент <option>
-        if (option.tagName === 'OPTION') {
-            // Считаем, сколько уже выбрано
-            const selectedCount = Array.from(this.options).filter(opt => opt.selected).length;
-
-            // Инвертируем выбор: если был выбран - снимаем, если нет - выбираем
-            if (option.selected) {
-                option.selected = false;
-            } else {
-                // Позволяем выбрать, только если лимит (4) еще не достигнут
-                if (selectedCount < 4) {
-                    option.selected = true;
-                } else {
-                    alert('Можно выбрать не более 4 атак!');
+        // Добавляем проверку, что GAME_DATA и GAME_DATA.species существуют
+        if (GAME_DATA && GAME_DATA.species) {
+            for (const speciesId in GAME_DATA.species) {
+                const speciesData = GAME_DATA.species[speciesId];
+                const isBattleOnly = speciesData.flags && speciesData.flags.includes("BATTLEONLY");
+                if (!isBattleOnly) {
+                    // Используем display_name, если он есть, иначе name
+                    const name = speciesData.display_name || speciesData.name;
+                    speciesSelect.appendChild(new Option(name, speciesId));
                 }
             }
         }
-    });
 
-    slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
+        const levelLabel = document.createElement('label');
+        levelLabel.textContent = 'Уровень:';
+        const levelInput = document.createElement('input');
+        levelInput.className = 'level-input';
+        levelInput.type = 'number';
+        levelInput.value = 100;
+        levelInput.min = 1;
+        levelInput.max = 100;
 
-    // Логика обновления списка атак остается прежней
-    speciesSelect.addEventListener('change', () => {
-        const selectedSpeciesId = speciesSelect.value;
-        movesSelect.innerHTML = '';
-        abilitySelect.innerHTML = '';
-        
-        if (selectedSpeciesId) {
-            // ... (весь ваш код для заполнения <option> для атак и способностей без изменений)
-            const speciesData = GAME_DATA.species[selectedSpeciesId];
-            if (speciesData?.abilities) {
-                speciesData.abilities.forEach(abilityId => {
-                    abilitySelect.appendChild(new Option(abilityId, abilityId));
-                });
-            }
-            if (speciesData?.moves) {
-                speciesData.moves.forEach(moveId => {
-                    const moveData = GAME_DATA.moves[moveId];
-                    if (moveData) movesSelect.appendChild(new Option(`${moveData.name} (${moveData.type})`, moveId));
-                });
-            }
+        const abilityLabel = document.createElement('label');
+        abilityLabel.textContent = 'Способность:';
+        const abilitySelect = document.createElement('select');
+        abilitySelect.className = 'ability-select';
+
+        const itemLabel = document.createElement('label');
+        itemLabel.textContent = `Предмет:`;
+        const itemSelect = document.createElement('select');
+        itemSelect.className = 'item-select';
+        itemSelect.appendChild(new Option("--- Без предмета ---", ""));
+        // Добавляем проверку
+        if (GAME_DATA && GAME_DATA.items) {
+            GAME_DATA.items.forEach(itemId => {
+                itemSelect.appendChild(new Option(itemId, itemId));
+            });
         }
-    });
+        
+        const movesLabel = document.createElement('label');
+        movesLabel.textContent = `Атаки (до 4):`;
+        const movesSelect = document.createElement('select');
+        movesSelect.className = 'moves-select';
+        movesSelect.multiple = true;
+        movesSelect.size = 8;
 
-    return slot;
-}
+        movesSelect.addEventListener('mousedown', function(event) {
+            event.preventDefault();
+            const option = event.target;
+            if (option.tagName === 'OPTION') {
+                const selectedCount = Array.from(this.options).filter(opt => opt.selected).length;
+                if (option.selected) {
+                    option.selected = false;
+                } else {
+                    if (selectedCount < 4) {
+                        option.selected = true;
+                    } else {
+                        alert('Можно выбрать не более 4 атак!');
+                    }
+                }
+            }
+        });
+        
+        slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
+
+        speciesSelect.addEventListener('change', () => {
+            const selectedSpeciesId = speciesSelect.value;
+            movesSelect.innerHTML = '';
+            abilitySelect.innerHTML = '';
+            if (selectedSpeciesId && GAME_DATA && GAME_DATA.species) {
+                const speciesData = GAME_DATA.species[selectedSpeciesId];
+                if (speciesData?.abilities) {
+                    speciesData.abilities.forEach(abilityId => {
+                        abilitySelect.appendChild(new Option(abilityId, abilityId));
+                    });
+                }
+                if (speciesData?.moves && GAME_DATA.moves) {
+                    speciesData.moves.forEach(moveId => {
+                        const moveData = GAME_DATA.moves[moveId];
+                        if (moveData) movesSelect.appendChild(new Option(`${moveData.name} (${moveData.type})`, moveId));
+                    });
+                }
+            }
+        });
+        
+        return slot;
+    }
 
     function checkFormValidity() {
         const teams = { team1: [] };
@@ -312,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
 
