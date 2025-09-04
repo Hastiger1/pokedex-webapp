@@ -147,21 +147,34 @@ document.addEventListener('DOMContentLoaded', () => {
         movesSelect.size = 8;
 
         movesSelect.addEventListener('mousedown', function(event) {
-            event.preventDefault();
-            const option = event.target;
-            if (option.tagName === 'OPTION') {
-                const selectedCount = Array.from(this.options).filter(opt => opt.selected).length;
-                if (option.selected) {
-                    option.selected = false;
+        event.preventDefault();
+
+        // 1. Запоминаем текущую позицию прокрутки
+        const scrollTop = this.scrollTop;
+
+        const option = event.target;
+        if (option.tagName === 'OPTION') {
+            const selectedCount = Array.from(this.options).filter(opt => opt.selected).length;
+
+            if (option.selected) {
+                option.selected = false;
+            } else {
+                if (selectedCount < 4) {
+                    option.selected = true;
                 } else {
-                    if (selectedCount < 4) {
-                        option.selected = true;
-                    } else {
-                        alert('Можно выбрать не более 4 атак!');
-                    }
+                    alert('Можно выбрать не более 4 атак!');
                 }
             }
-        });
+        }
+
+        // 2. Возвращаем позицию прокрутки на место.
+        // Оборачиваем в setTimeout с нулевой задержкой - это трюк,
+        // который гарантирует, что наш код сработает ПОСЛЕ того,
+        // как браузер попытается "прыгнуть".
+        setTimeout(() => {
+            this.scrollTop = scrollTop;
+        }, 0);
+    });
         
         slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
 
@@ -288,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
 
