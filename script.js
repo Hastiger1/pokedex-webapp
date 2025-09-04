@@ -1,5 +1,7 @@
 // script.js
 
+const API_URL = "https://api.monster-bot.ru/api/data";
+
 document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
     tg.ready();
@@ -286,6 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
 
