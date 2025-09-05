@@ -145,17 +145,23 @@ document.addEventListener('DOMContentLoaded', () => {
         movesSelect.className = 'moves-select';
         movesSelect.multiple = true;
         movesSelect.size = 8;
+const tg = window.Telegram.WebApp;
 
-        movesSelect.addEventListener('mousedown', function(event) {
+// --- НАЧАЛО ИСПРАВЛЕННОГО БЛОКА ---
+
+// Список платформ, которые мы считаем "десктопными" (управление мышью)
+const desktopPlatforms = ['tdesktop', 'macos', 'unknown'];
+
+if (desktopPlatforms.includes(tg.platform)) {
+    // --- ВАРИАНТ ДЛЯ TELEGRAM DESKTOP, MACOS И ОБЫЧНОГО БРАУЗЕРА ---
+    // Назначаем ваш хитрый обработчик, который позволяет выбирать кликами без Ctrl.
+    movesSelect.addEventListener('mousedown', function(event) {
         event.preventDefault();
-
-        // 1. Запоминаем текущую позицию прокрутки
         const scrollTop = this.scrollTop;
-
         const option = event.target;
+
         if (option.tagName === 'OPTION') {
             const selectedCount = Array.from(this.options).filter(opt => opt.selected).length;
-
             if (option.selected) {
                 option.selected = false;
             } else {
@@ -166,15 +172,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-
-        // 2. Возвращаем позицию прокрутки на место.
-        // Оборачиваем в setTimeout с нулевой задержкой - это трюк,
-        // который гарантирует, что наш код сработает ПОСЛЕ того,
-        // как браузер попытается "прыгнуть".
         setTimeout(() => {
             this.scrollTop = scrollTop;
         }, 0);
     });
+} else {
+    // --- ВАРИАНТ ДЛЯ МОБИЛЬНЫХ ПЛАТФОРМ (Android, iOS) ---
+    // Назначаем простой обработчик, который НЕ ломает нативный интерфейс,
+    // а только проверяет лимит ПОСЛЕ выбора.
+    movesSelect.addEventListener('click', function(event) {
+        if (event.target.tagName === 'OPTION') {
+            const selectedCount = Array.from(this.options).filter(opt => opt.selected).length;
+            if (selectedCount > 4) {
+                alert('Можно выбрать не более 4 атак!');
+                event.target.selected = false;
+            }
+        }
+    });
+}
         
         slot.append(speciesLabel, speciesSelect, levelLabel, levelInput, abilityLabel, abilitySelect, itemLabel, itemSelect, movesLabel, movesSelect);
 
@@ -301,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
 
 
 
